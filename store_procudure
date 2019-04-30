@@ -1,0 +1,385 @@
+
+-- get started --
+drop procedure if exists SP_TEST;
+delimiter //
+CREATE PROCEDURE SP_TEST()
+begin
+	select * from product;
+end //
+delimiter ;
+call SP_TEST()
+
+
+
+-- declaring variables -- 
+-- DECLARE variable_name datatype(size) DEFAULT default_value;
+delimiter $$
+drop procedure if exists getData;
+create  procedure getData()
+begin
+	DECLARE product_name VARCHAR(255) DEFAULT NULL;
+	declare total_sale int default 0;
+    declare x, y int default 0;
+	
+	SET product_name = "hello products"; -- assign a variable another value
+    set total_sale = 10;
+    set x = 3;
+    set y = 5;
+	select total_sale + x + y ;
+    select 99 into total_sale; -- assign the result of a query.
+    select total_sale;
+end
+$$ delimiter ;
+call getData();
+
+
+
+-- PARAMETERS --
+-- a parameter has one of three modes: IN,OUT, or INOUT
+
+-- IN
+delimiter //
+drop procedure if exists getAction;
+create procedure getAction(in hello varchar(255))
+begin
+	select hello as greeting;
+end
+// delimiter ;
+call getAction("hi");
+
+DELIMITER //
+CREATE PROCEDURE GetOfficeByCountry(IN countryName VARCHAR(255))
+ BEGIN
+ SELECT * 
+ FROM offices
+ WHERE country = countryName;
+ END //
+DELIMITER ;
+call GetOfficeByCountry("TH");
+
+
+-- OUT
+delimiter //
+drop procedure if exists getAction;
+create procedure getAction(in hello varchar(255), out total int)
+begin
+	set total = 123;
+	select hello as greeting;
+end
+// delimiter ;
+call getAction("hi", @x);
+select @x;
+
+-- OUT
+DELIMITER $$
+CREATE PROCEDURE CountOrderByStatus(
+ IN orderStatus VARCHAR(25),
+ OUT total INT)
+BEGIN
+ SELECT count(orderNumber)
+ INTO total
+ FROM orders
+ WHERE status = orderStatus;
+END$$
+DELIMITER ;
+CALL CountOrderByStatus('Shipped',@total);
+SELECT @total;
+
+
+-- INOUT
+DELIMITER $$
+CREATE PROCEDURE set_counter(INOUT count INT(4),IN inc INT(4))
+BEGIN
+ SET count = count + inc;
+END$$
+DELIMITER ;
+SET @counter = 1;
+CALL set_counter(@counter,1); -- 2
+CALL set_counter(@counter,1); -- 3
+CALL set_counter(@counter,5); -- 8
+SELECT @counter; -- 8
+
+
+-- CONDITION --
+-- IF
+IF param1  > 5 THEN
+	SET param1 = 99;
+END IF;
+
+-- IF ELSEIF ELSE
+IF param1  = 21 THEN
+	SET param3 = 9;
+ELSEIF param1 > 2 THEN
+	SET param3 = 99;	
+ELSE
+	SET param3 = 999;	
+END IF;
+
+
+-- CASE
+drop procedure if exists SP_TEST;
+delimiter xx
+create procedure SP_TEST(IN param1 INT,
+								OUT param2 VARCHAR(255))
+begin
+
+	CASE param1
+		WHEN 1 THEN
+			SET param2 = "1-day Shipping";
+		WHEN 2 THEN
+			SET param2 = "2-day Shipping";
+		ELSE
+			SET param2 = "5-day SHipping";
+	END CASE;
+	
+end xx
+delimiter ;
+
+call SP_TEST(2, @something);
+select  @something;
+
+ 
+-- NO CASE
+DELIMITER $$ 
+CREATE PROCEDURE GetCustomerLevel(
+ in  p_customerNumber int(11), 
+ out p_customerLevel  varchar(10))
+BEGIN
+    DECLARE creditlim double;
+ 
+    SELECT creditlimit INTO creditlim
+ FROM customers
+ WHERE customerNumber = p_customerNumber;
+ 
+CASE  
+ WHEN creditlim > 50000 THEN 
+    SET p_customerLevel = 'PLATINUM';
+ WHEN (creditlim <= 50000 AND creditlim >= 10000) THEN
+    SET p_customerLevel = 'GOLD';
+ WHEN creditlim < 10000 THEN
+    SET p_customerLevel = 'SILVER';
+ END CASE;
+ 
+END$$
+ 
+ 
+ 
+ -- LOOP --
+ -- WHILE 
+
+--WHILE expression DO
+--   statements
+--END WHILE
+drop procedure if exists SP_TEST;
+delimiter xx
+create procedure SP_TEST(IN param1 INT,
+								INOUT param2 INT)
+begin
+	set @i = 0;
+	WHILE @i < 5 DO
+		SET param2 = param2 + 1;
+		SET @i = @i + 1;
+	END WHILE;
+
+end xx
+delimiter ;
+SET @something = 0;
+call SP_TEST(2, @something);
+select  @something; -- 5
+
+
+
+-- REPEAT LOOP --
+--REPEAT
+-- statements;
+--UNTIL expression
+--END REPEAT
+drop procedure if exists SP_TEST;
+delimiter xx
+create procedure SP_TEST(IN param1 INT,
+								INOUT param2 INT)
+begin
+	SET @i = 0;
+	REPEAT SET @i = @i + 1;
+	UNTIL @i > 5
+	END REPEAT;
+	SET param2 = @i;
+end xx
+delimiter ;
+SET @something = 0;
+call SP_TEST(2, @something);
+select  @something; -- 6
+
+
+-- more loop
+
+drop procedure if exists SP_TEST;
+delimiter xx
+create procedure SP_TEST()
+begin
+
+ 	DECLARE x  INT;
+	DECLARE str  VARCHAR(255);
+        
+ 	SET x = 1;
+	SET str =  '';
+        
+	loop_label:  LOOP -- LOOPstatement that executes a block of code repeatedly
+		IF  x > 10 THEN 
+			LEAVE  loop_label; -- LEAVEstatement allows you to exit the loop he LEAVEstatement works like the  break statement i
+		END IF;
+            
+	SET  x = x + 1;
+	IF  (x mod 2) THEN
+		ITERATE  loop_label; -- ITERATEstatement allows you to skip The ITERATEstatement is similar to the continue statement 
+	ELSE
+		SET  str = CONCAT(str,x,',');
+	END  IF;
+	END LOOP;    
+	 
+	SELECT str;
+end xx
+delimiter ;
+
+call SP_TEST();
+
+
+
+-- CURSOR --
+
+drop procedure if exists SP_TEST;
+delimiter //
+create procedure SP_TEST(INOUT reference_list varchar(255))
+BEGIN
+
+ 	DECLARE v_finished INTEGER DEFAULT 0;
+    DECLARE v_reference varchar(255) DEFAULT "";
+
+	DECLARE finished integer DEFAULT 0;
+	DECLARE reference varchar(255) DEFAULT "";
+	
+	DECLARE xx_cursor CURSOR FOR
+	select product_name from product;
+	
+	DECLARE CONTINUE HANDLER
+	FOR NOT FOUND SET v_finished = 1;
+	
+	OPEN xx_cursor;
+	
+	get_reference: LOOP
+	
+		FETCH xx_cursor INTO v_reference;
+		IF v_finished = 1 THEN 
+			LEAVE get_reference;
+		END IF;
+		
+		set reference_list = CONCAT(v_reference,";",reference_list);
+	
+	END LOOP get_reference;
+	
+	CLOSE xx_cursor;
+
+
+END //
+delimiter ;
+
+SET @reference_list = "";
+call SP_TEST(@reference_list );
+select @reference_list ;
+
+-- DECALRE TOP ALWAY
+SET @count = 0;
+BEGIN
+	DECLARE cur_tmp CURSOR FOR 
+		SELECT id_product, qty
+		FROM purchase_detail WHERE id_purchase = id;
+	DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
+	OPEN cur_tmp;
+	LOOPROWS: LOOP
+	
+		IF finished = 1 THEN
+			CLOSE cur_tmp;
+			LEAVE LOOPROWS;
+		END IF;
+		
+		SET @count = @count + 1;
+		FETCH cur_tmp INTO p1, p2;
+		SELECT p1, p2, @count;
+	END LOOP;
+END;
+
+
+
+ 
+ 
+ -- SHOW --
+SHOW PROCEDURE STATUS;
+SHOW PROCEDURE STATUS WHERE db = "test_stock";
+SHOW CREATE PROCEDURE SP_TEST;
+
+
+
+-- EXAMPLE --
+
+drop procedure if exists SP_TEST;
+delimiter //
+create procedure SP_TEST(IN id INTEGER, OUT status CHAR(1), OUT message varchar(32))
+BEGIN
+
+DECLARE p1 INT DEFAULT 0;
+DECLARE p2 INT DEFAULT 0;
+DECLARE finished INT DEFAULT 0;
+
+SET status = "";
+SET message = "";
+SET @count = 0;
+SET @text = "";
+
+IF NOT EXISTS(SELECT 1 FROM purchase WHERE id_purchase = id) THEN
+	SET status = "E";
+	SET message = "No data master";
+END IF;
+
+IF NOT EXISTS(SELECT 1 FROM purchase_detail WHERE id_purchase = id LIMIT 1) THEN
+	SET status = "E";
+	SET message = "No data detail";
+END IF;
+
+BEGIN
+	DECLARE cur_tmp CURSOR FOR 
+		SELECT id_product, qty
+		FROM purchase_detail WHERE id_purchase = id;
+	DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
+	OPEN cur_tmp;
+	LOOPROWS: LOOP
+	
+		IF finished = 1 THEN
+			CLOSE cur_tmp;
+			LEAVE LOOPROWS;
+		END IF;
+		
+		SET @count = @count + 1;
+		FETCH cur_tmp INTO p1, p2;
+		
+		IF p1 > 5 THEN
+			SELECT p1;
+			SET @text = p1;
+		END IF;
+	END LOOP;
+END;
+
+SET status = @count;
+SET message = @text;
+
+END //
+delimiter ;
+
+call SP_TEST(45, @status, @message);
+select @status, @message;
+
+
+
+
+
+
+
