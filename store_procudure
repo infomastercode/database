@@ -378,7 +378,113 @@ call SP_TEST(45, @status, @message);
 select @status, @message;
 
 
+-- EXAMPLE TRANSACTION
 
+DELIMITER //
+
+CREATE PROCEDURE my_procedure (IN parent_id int, IN identifier varchar(255), OUT out_user_id int)
+BEGIN
+
+  -- local variable, set later after user is created
+  DECLARE user_id int;
+
+  -- rollback transaction and bubble up errors if something bad happens
+  DECLARE exit handler FOR SQLEXCEPTION, SQLWARNING
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  START TRANSACTION;
+
+  -- insert some row with user-specified values
+  INSERT INTO users (field1, field2) values (parent_id, identifier);
+
+  -- get the new id
+  SET user_id = last_insert_id();
+
+  -- do another insert
+  INSERT INTO usersmeta (user_id, field1, field2) values (user_id, 1, 2);
+
+  -- if no errors happened yet, commit transaction
+  COMMIT;
+
+  -- return
+  SELECT user_id INTO out_user_id;
+
+END //
+
+DELIMITER ;
+
+
+-- ERROR HANDLER
+
+	-- format
+	DECLARE action HANDLER FOR condition_value statement;
+	
+	-- if condition matches the  "condition_value", MySQL will execite the "statment"
+	-- and CONTINUE or EXIT on action
+	
+	-- CONTINUE  the execution of BEGIN … END continues.
+	-- EXIT the execution of BEGIN … END continues.
+	
+	DECLARE CONTINUE HANDLER FOR 1062 -- 1062 error code for duplicate keys
+	SELECT CONCAT('duplicate keys (',article_id,',',tag_id,') found') AS msg;
+	
+		
+	DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET has_error = 1;
+	
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+	ROLLBACK;
+	SELECT 'An error has occurred, operation rollbacked and the stored procedure was terminated';
+	END;
+	
+	DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_row_found = 1;
+	
+	--EXAMPLE
+	
+	DELIMITER $$
+ 
+	CREATE PROCEDURE insert_article_tags(IN article_id INT, IN tag_id INT)
+	BEGIN
+	 
+	 DECLARE CONTINUE HANDLER FOR 1062
+	 SELECT CONCAT('duplicate keys (',article_id,',',tag_id,') found') AS msg;
+	 
+	 -- insert a new record into article_tags
+	 INSERT INTO article_tags(article_id,tag_id)
+	 VALUES(article_id,tag_id);
+	 
+	 -- return tag count for the article
+	 SELECT COUNT(*) FROM article_tags;
+	END
+	
+	
+	DELIMITER $$
+ 
+	CREATE PROCEDURE insert_article_tags_3(IN article_id INT, IN tag_id INT)
+	BEGIN
+	 
+	 DECLARE EXIT HANDLER FOR 1062 SELECT 'Duplicate keys error encountered';
+	 DECLARE EXIT HANDLER FOR SQLEXCEPTION SELECT 'SQLException encountered';
+	 DECLARE EXIT HANDLER FOR SQLSTATE '23000' SELECT 'SQLSTATE 23000';
+	 DECLARE EXIT HANDLER FOR SQLWARNING SELECT 'SQLWARNING';
+	 DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_row_found = 1;
+
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+	ROLLBACK;
+	SELECT 'An error has occurred, operation rollbacked and the stored procedure was terminated';
+	END;
+	 
+	 -- insert a new record into article_tags
+	 INSERT INTO article_tags(article_id,tag_id)
+	 VALUES(article_id,tag_id);
+	 
+	 -- return tag count for the article
+	 SELECT COUNT(*) FROM article_tags;
+	END
 
 
 
